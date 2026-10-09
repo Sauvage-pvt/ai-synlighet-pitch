@@ -191,3 +191,26 @@ AI-søk er ikke kommende — det er nå. SMB-er trenger verktøy for å bli funn
 - ✓ Lokalt, norsk first-mover
 
 **Ready to build?**
+
+
+---
+
+## Statuslogg
+
+### 2026-10-09: Oppsett av demokode og OpenAI-nøkkel
+
+- Workeren `ai-synlighet-pitch` er deployet på ai-synlighet-pitch.lenkemotor.workers.dev og er koblet til dette repoet.
+- «Feil demokode» kom av at `DEMO_KODE` ikke var lagt inn i Cloudflare. Bare `OPENAI_MODEL` fantes.
+- Lagt inn under Settings → Variables and secrets (Production), begge som **Secret**:
+  - `DEMO_KODE`: koden som skrives i feltet «Demokode (full analyse)»
+  - `OPENAI_API_KEY`: nøkkel fra platform.openai.com
+- `OPENAI_MODEL` = `gpt-4o-mini`, satt som vanlig variabel i `wrangler.jsonc`.
+- Siden fungerer. Gratis sjekk virker uten kode.
+- Full analyse er ikke testet helt ennå, fordi OpenAI-kontoen ikke har kreditt.
+
+**Neste steg**
+
+- [ ] Kjøpe API-kreditt på platform.openai.com (Settings → Billing, minst ca. 5 dollar). API-et faktureres separat fra ChatGPT-abonnement.
+- [ ] Teste full analyse med demokoden.
+
+**Merk:** Verdiene for secrets lagres bare i Cloudflare, aldri i repoet. Får du «Feil demokode», sjekk mellomrom og store/små bokstaver, og legg koden inn på nytt med blyant-ikonet.
