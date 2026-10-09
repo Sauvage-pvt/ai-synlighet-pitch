@@ -68,6 +68,38 @@ th{font-size:13px;color:var(--muted);font-weight:600}
 footer{padding:56px 0 72px}
 footer h2{margin-bottom:10px}
 .muted{color:var(--muted)}
+
+/* Prøv selv */
+.form{display:grid;gap:12px;grid-template-columns:1fr}
+@media(min-width:680px){.form{grid-template-columns:1fr 1fr}.form .full{grid-column:1/-1}}
+.form label{display:block;font-size:13px;font-weight:600;color:var(--muted);margin-bottom:4px}
+.form input{width:100%;font:inherit;font-size:16px;padding:12px 14px;border:1px solid var(--line);border-radius:10px;background:var(--surface);color:var(--ink)}
+.form input:focus{outline:2px solid var(--accent);outline-offset:1px}
+.btns{display:flex;flex-wrap:wrap;gap:10px;margin-top:16px}
+button{font:inherit;font-weight:600;font-size:16px;padding:12px 18px;border-radius:10px;border:1px solid var(--accent);background:var(--accent);color:#fff;cursor:pointer}
+button.ghost{background:transparent;color:var(--accent)}
+button:disabled{opacity:.55;cursor:wait}
+.status{margin-top:14px;color:var(--muted);min-height:1.6em}
+.status.err{color:var(--warn)}
+.res{display:grid;gap:14px;grid-template-columns:1fr;margin-top:22px}
+@media(min-width:760px){.res{grid-template-columns:1fr 1fr}}
+.res .card h3{display:flex;justify-content:space-between;align-items:baseline;gap:8px}
+.score{font-size:44px;font-weight:700;color:var(--accent);line-height:1}
+.score small{font-size:16px;color:var(--muted);font-weight:500}
+.chk{border-top:1px solid var(--line);padding:12px 0}
+.chk:first-of-type{border-top:0}
+.chk .top{display:flex;gap:8px;align-items:flex-start;font-weight:600}
+.dot{flex:none;width:20px;height:20px;border-radius:50%;display:grid;place-items:center;font-size:12px;color:#fff;margin-top:3px}
+.dot.ok{background:var(--accent)}.dot.no{background:var(--warn)}
+.chk .f{font-size:14px;color:var(--muted);margin:4px 0 0 28px}
+.chk .t{font-size:14px;margin:6px 0 0 28px;padding:8px 10px;border-radius:8px;background:var(--accent-soft)}
+.q{border-top:1px solid var(--line);padding:12px 0;font-size:15px}
+.q:first-of-type{border-top:0}
+.q .ans{font-weight:600;margin-top:4px}
+.q .ans.ok{color:var(--accent)}.q .ans.no{color:var(--warn)}
+.q .list{font-size:13px;color:var(--muted);margin-top:4px}
+.locked{color:var(--muted);font-size:15px}
+.compare{margin-top:22px}
 </style>
 </head>
 <body>
@@ -134,6 +166,37 @@ footer h2{margin-bottom:10px}
   </div>
 </section>
 
+
+<section id="prov">
+  <div class="wrap">
+    <h2>Prøv selv</h2>
+    <p class="muted">Skriv inn en bedrift og se forskjellen på gratis sjekk og full analyse. Gratis sjekk leser nettsiden på ekte. Full analyse spør ChatGPT på ekte og krever demokode.</p>
+    <form class="form" id="f" onsubmit="return false">
+      <div class="full"><label for="url">Nettside</label><input id="url" placeholder="f.eks. bedrift.no" autocomplete="off" inputmode="url" required></div>
+      <div><label for="bransje">Bransje / tjeneste</label><input id="bransje" placeholder="f.eks. rørlegger"></div>
+      <div><label for="sted">Sted</label><input id="sted" placeholder="f.eks. Steinkjer"></div>
+      <div><label for="navn">Bedriftsnavn (valgfritt)</label><input id="navn" placeholder="hentes fra nettsiden"></div>
+      <div><label for="kode">Demokode (full analyse)</label><input id="kode" type="password" autocomplete="off"></div>
+    </form>
+    <div class="btns">
+      <button id="bGratis">Kjør gratis sjekk</button>
+      <button id="bFull" class="ghost">Kjør full analyse</button>
+    </div>
+    <div class="status" id="status" role="status"></div>
+    <div class="res" id="res" hidden>
+      <div class="card" id="rGratis"></div>
+      <div class="card" id="rFull"><h3>Full analyse</h3><p class="locked">Kjør full analyse for å se om ChatGPT faktisk nevner bedriften, hvilken plass den får og hvem som blir nevnt i stedet.</p></div>
+    </div>
+    <div class="card compare" id="cmp" hidden>
+      <h3>Forskjellen</h3>
+      <ul class="clean">
+        <li><strong>Gratis sjekk</strong> ser på nettsiden: om den er laget slik at AI kan forstå og anbefale bedriften.</li>
+        <li><strong>Full analyse</strong> spør ChatGPT de samme spørsmålene kundene stiller, og viser om bedriften faktisk blir nevnt og hvem som vinner i stedet.</li>
+        <li><strong>Tracking</strong> kjører analysen hver uke og viser om tiltakene virker.</li>
+      </ul>
+    </div>
+  </div>
+</section>
 <section>
   <div class="wrap">
     <h2>Markedet</h2>
@@ -232,5 +295,62 @@ footer h2{margin-bottom:10px}
   </div>
 </footer>
 
+
+<script>
+(function(){
+  const $=id=>document.getElementById(id);
+  const esc=t=>String(t??'').replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+  const data=()=>({url:$('url').value,bransje:$('bransje').value,sted:$('sted').value,navn:$('navn').value,kode:$('kode').value});
+  const status=(t,err)=>{$('status').textContent=t;$('status').className='status'+(err?' err':'')};
+  const busy=b=>{$('bGratis').disabled=b;$('bFull').disabled=b};
+  let sisteNavn='';
+
+  async function post(path,body){
+    const r=await fetch(path,{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify(body)});
+    const j=await r.json().catch(()=>({feil:'Ugyldig svar fra serveren'}));
+    if(!r.ok||j.feil) throw new Error(j.feil||('Feil '+r.status));
+    return j;
+  }
+
+  function visGratis(g){
+    sisteNavn=g.navn;
+    const mangler=g.sjekker.filter(c=>!c.ok).length;
+    $('rGratis').innerHTML=
+      `<h3>Gratis sjekk <span class="pill">${esc(g.domene)}</span></h3>
+       <div class="score">${g.score}<small> / 100</small></div>
+       <p class="muted" style="margin:6px 0 10px">${mangler?`${mangler} ting stopper AI fra å forstå eller anbefale ${esc(g.navn||'bedriften')}.`:'Nettsiden er godt rigget for AI-søk.'}${g.tynt?' Forsiden har også svært lite tekst.':''}</p>`+
+      g.sjekker.map(c=>`<div class="chk"><div class="top"><span class="dot ${c.ok?'ok':'no'}">${c.ok?'✓':'!'}</span>${esc(c.navn)}</div>
+        <div class="f">Funnet: ${esc(c.funnet)}</div>${c.ok?'':`<div class="t"><strong>Dette gjør jeg:</strong> ${esc(c.tiltak)}</div>`}</div>`).join('');
+    $('res').hidden=false;$('cmp').hidden=false;
+  }
+
+  function visFull(a){
+    $('rFull').innerHTML=
+      `<h3>Full analyse <span class="pill">${esc(a.modell)}</span></h3>
+       <div class="score">${a.nevntAntall}<small> av ${a.totalt} spørsmål</small></div>
+       <p class="muted" style="margin:6px 0 10px">${a.nevntAntall?'ChatGPT nevner bedriften i noen svar.':'ChatGPT nevner ikke bedriften i noen av svarene.'}</p>`+
+      a.resultater.map(r=>`<div class="q">«${esc(r.sporsmal)}»
+        <div class="ans ${r.nevnt?'ok':'no'}">${r.nevnt?`Nevnt – plass ${r.plass} av ${r.antall}`:(r.antall?`Ikke nevnt (${r.antall} andre nevnt)`:'ChatGPT nevnte ingen bedrifter')}</div>
+        ${r.bedrifter.length?`<div class="list">${r.bedrifter.map(esc).join(' · ')}</div>`:''}</div>`).join('')+
+      (a.konkurrenter.length?`<h3 style="margin-top:16px">Hvem som vinner i stedet</h3><ul class="clean">${a.konkurrenter.map(k=>`<li>${esc(k.navn)} <span class="muted">– nevnt ${k.ganger} av ${a.totalt} ganger</span></li>`).join('')}</ul>`:'')+
+      `<div class="t" style="margin:14px 0 0;padding:10px 12px;border-radius:8px;background:var(--accent-soft);font-size:14px"><strong>Dette gjør jeg:</strong> Jeg ser på hva konkurrentene som blir nevnt har på nettsidene sine, og lager en prioritert liste over hva som gir størst løft for deg. Så måler vi på nytt etter at tiltakene er gjort.</div>`;
+  }
+
+  $('bGratis').onclick=async()=>{
+    busy(true);status('Leser nettsiden …');
+    try{visGratis(await post('/api/gratis',data()));status('');}
+    catch(e){status(e.message,true);}finally{busy(false);}
+  };
+  $('bFull').onclick=async()=>{
+    const d=data();
+    if(!d.bransje||!d.sted){status('Fyll inn bransje og sted for full analyse.',true);return;}
+    busy(true);status('Kjører gratis sjekk og spør ChatGPT … (ca. 10–20 sek)');
+    try{
+      const [g,a]=await Promise.all([post('/api/gratis',d),post('/api/analyse',{...d,navn:d.navn})]);
+      visGratis(g);visFull(a);status('');
+    }catch(e){status(e.message,true);}finally{busy(false);}
+  };
+})();
+</script>
 </body>
 </html>
