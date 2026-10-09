@@ -1,0 +1,244 @@
+<!doctype html>
+<html lang="no">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>AI-sjekk: finner kundene deg?</title>
+<style>
+  :root { --navy:#0b2a6f; --red:#c8102e; --grey:#5d6b8a; --line:#dfe5f0; }
+  * { box-sizing:border-box; }
+  body { margin:0; font-family:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif; color:var(--navy); background:#fff; }
+  main { max-width:520px; margin:0 auto; padding:24px 20px 56px; }
+  .demo-banner { font-size:12px; letter-spacing:.08em; text-transform:uppercase; color:var(--grey); border:1px dashed var(--grey); padding:8px 10px; margin-bottom:20px; }
+  .fremdrift { height:6px; background:var(--line); margin-bottom:24px; }
+  .fremdrift div { height:100%; width:0; background:var(--navy); transition:width .3s; }
+  .steg { display:none; }
+  .steg.aktiv { display:block; }
+  .teller { font-size:13px; letter-spacing:.08em; text-transform:uppercase; color:var(--grey); margin:0; }
+  h1 { font-size:26px; line-height:1.25; margin:8px 0 20px; }
+  .valg { display:block; width:100%; text-align:left; padding:16px; margin:0 0 12px; border:2px solid var(--navy); background:#fff; color:var(--navy); font:inherit; font-size:17px; cursor:pointer; }
+  .valg:hover, .valg:focus-visible { background:var(--navy); color:#fff; outline:none; }
+  .laster { font-size:17px; margin-top:40px; color:var(--grey); }
+  .score { font-size:72px; font-weight:700; color:var(--red); line-height:1; margin:0; }
+  .score span { font-size:22px; color:var(--grey); font-weight:400; }
+  .niva { font-size:17px; margin:8px 0 28px; }
+  .tiltak { border:2px solid var(--navy); padding:18px; margin:0 0 14px; }
+  .tiltak h2 { font-size:19px; margin:0 0 6px; }
+  .tiltak .lås { font-size:13px; letter-spacing:.08em; text-transform:uppercase; color:var(--grey); margin:0 0 10px; }
+  .tiltak .uskarp { filter:blur(4px); user-select:none; font-size:16px; margin:0; }
+  .skjema { border-top:2px solid var(--line); margin-top:28px; padding-top:20px; }
+  .skjema label { display:block; font-size:15px; margin-bottom:12px; }
+  .skjema input[type=email] { width:100%; padding:14px; border:2px solid var(--navy); font:inherit; font-size:17px; margin-top:6px; }
+  .samtykke { display:flex; gap:10px; align-items:flex-start; font-size:14px; line-height:1.4; }
+  .samtykke input { margin-top:3px; }
+  .knapp { display:inline-block; background:var(--navy); color:#fff; border:0; padding:16px 22px; font:inherit; font-size:16px; font-weight:700; cursor:pointer; box-shadow:6px 6px 0 var(--red); margin-top:14px; }
+  .knapp:disabled { opacity:.5; cursor:default; }
+  .personvern { font-size:13px; color:var(--grey); margin-top:20px; }
+  .bekreft { border:2px solid var(--navy); padding:20px; margin-top:20px; }
+  [hidden] { display:none !important; }
+</style>
+</head>
+<body>
+<main>
+  <p class="demo-banner">Prototype · demo uten lagring</p>
+  <div class="fremdrift"><div id="fremdrift"></div></div>
+
+  <div id="sporsmal"></div>
+
+  <section id="resultat" hidden>
+    <p class="teller">Resultat</p>
+    <div id="laster" class="laster" hidden>Regner ut din score …</div>
+
+    <div id="innhold" hidden>
+      <p class="score"><span id="score"></span><span>/100</span></p>
+      <p class="niva" id="niva"></p>
+      <div id="tiltak"></div>
+
+      <form id="skjema" class="skjema">
+        <p style="margin:0 0 12px;font-size:17px">Skriv inn e-posten din, så viser vi hva du bør gjøre først.</p>
+        <label>E-post
+          <input type="email" id="epost" required autocomplete="email">
+        </label>
+        <label class="samtykke">
+          <input type="checkbox" id="samtykke" required>
+          <span>Jeg samtykker til at dere sender meg resultatet og oppfølging på e-post. Jeg kan melde meg av når som helst.</span>
+        </label>
+        <button class="knapp" id="send" type="submit">Lås opp mine tiltak</button>
+        <p class="personvern">Demo: ingenting lagres eller sendes. Se <a href="#">personvernerklæringen</a> (kommer).</p>
+      </form>
+
+      <div id="bekreft" class="bekreft" hidden>
+        <p class="teller">Neste steg</p>
+        <p style="font-size:17px;margin:8px 0 0">I den ferdige versjonen sendes en bekreftelse til <strong id="epostvis"></strong>. Først etter at du har trykket på lenken, låses tiltakene opp.</p>
+      </div>
+    </div>
+  </section>
+</main>
+
+<script>
+// ===== Scoring (samme logikk som scoring.mjs, uten worker) =====
+const TILTAK = {
+  booking: {
+    id:'booking',
+    tittel:'Bookinger og henvendelser utenfor åpningstid',
+    tekst:'Kunder som ringer eller skriver på kvelden får svar med ledig tid, og bookingen går rett i kalenderen.',
+    knapp:'Test agenten, ring demo-nummeret',
+  },
+  tapte: {
+    id:'tapte',
+    tittel:'Kunder som har sluttet å komme',
+    tekst:'Vi finner kunder som ikke har vært innom på en stund og sender en kort, personlig melding.',
+    knapp:'Få en liste over kundene dine',
+  },
+  synlighet: {
+    id:'synlighet',
+    tittel:'Bli funnet når folk spør ChatGPT',
+    tekst:'Vi sjekker hva ChatGPT og Perplexity svarer når en kunde spør etter din tjeneste i ditt område.',
+    knapp:'Få en gratis analyse',
+  },
+};
+
+const POENG = {
+  q1: { 'bare-meg':{}, '2-5':{}, '6-20':{}, 'over-20':{} },
+  q2: { 'under-2':{booking:0}, '2-5':{booking:5}, '5-10':{booking:10}, 'over-10':{booking:15} },
+  q3: { 'nei':{booking:0}, 'noen-ganger':{booking:10}, 'ofte':{booking:20}, 'vet-ikke':{booking:10} },
+  q4: { 'nei':{tapte:0}, 'noen-få':{tapte:10}, 'mange':{tapte:20}, 'vet-ikke':{tapte:10} },
+  q5: { 'anbefalinger':{synlighet:0}, 'google-kart':{synlighet:5}, 'sosiale':{synlighet:5}, 'vet-ikke':{synlighet:10}, 'chatgpt':{synlighet:20} },
+};
+const NIVA_TEKST = {
+  lav: 'Du har litt å vinne, men ingen akutt brann.',
+  middels: 'Du bruker tid du ikke trenger å bruke.',
+  høy: 'Du taper penger og tid akkurat nå.',
+};
+const SPORSMAAL = [
+  { id:'q1', tekst:'Hvor mange ansatte har bedriften?', valg:[['bare-meg','Bare meg'],['2-5','2–5'],['6-20','6–20'],['over-20','Over 20']] },
+  { id:'q2', tekst:'Hvor mye tid går med til å svare på henvendelser, bestille tid og følge opp kunder hver uke?', valg:[['under-2','Under 2 timer'],['2-5','2–5 timer'],['5-10','5–10 timer'],['over-10','Over 10 timer']] },
+  { id:'q3', tekst:'Får du henvendelser utenfor åpningstid som ikke blir besvart før neste dag?', valg:[['nei','Nei'],['noen-ganger','Noen ganger'],['ofte','Ofte'],['vet-ikke','Vet ikke, men jeg tror det skjer']] },
+  { id:'q4', tekst:'Har du kunder som har sluttet å komme tilbake, uten at du vet hvorfor?', valg:[['nei','Nei'],['noen-få','Noen få'],['mange','Mange'],['vet-ikke','Vet ikke']] },
+  { id:'q5', tekst:'Hvordan kommer nye kunder til deg i dag?', valg:[['anbefalinger','Anbefalinger og kjente'],['google-kart','Google og kart'],['sosiale','Sosiale medier'],['vet-ikke','Vet ikke, folk bare dukker opp'],['chatgpt','Kunder spør ChatGPT eller lignende']] },
+];
+const SPORS_IDS = SPORSMAAL.map(s => s.id);
+
+function beregnMaks() {
+  const maks = {booking:0, tapte:0, synlighet:0};
+  for (const q of SPORS_IDS) {
+    const per = {booking:0, tapte:0, synlighet:0};
+    for (const b of Object.values(POENG[q])) for (const [t,p] of Object.entries(b)) per[t] = Math.max(per[t], p);
+    for (const t of Object.keys(maks)) maks[t] += per[t];
+  }
+  return maks;
+}
+const MAKS = beregnMaks();
+const MAKS_SUM = MAKS.booking + MAKS.tapte + MAKS.synlighet;
+
+function score(svar) {
+  const poeng = {booking:0, tapte:0, synlighet:0};
+  for (const q of SPORS_IDS) {
+    for (const [t,p] of Object.entries(POENG[q][svar[q]] || {})) poeng[t] += p;
+  }
+  const sum = poeng.booking + poeng.tapte + poeng.synlighet;
+  const totalt = Math.round((sum / MAKS_SUM) * 100);
+  const rangert = Object.entries(poeng).sort((a,b) => b[1]-a[1]);
+  const [topId, topP] = rangert[0];
+  const [nestId, nestP] = rangert[1];
+  let anbefalt = [topId];
+  if (topP < 10) anbefalt = ['synlighet'];
+  else if (topP - nestP < 10 && nestP >= 10) anbefalt.push(nestId);
+  const niva = totalt < 40 ? 'lav' : totalt <= 70 ? 'middels' : 'høy';
+  return { score: totalt, niva, anbefalt: anbefalt.map(id => TILTAK[id]) };
+}
+
+// ===== Grensesnitt =====
+const svar = {};
+let steg = 0;
+
+function el(tag, cls, tekst) {
+  const e = document.createElement(tag);
+  if (cls) e.className = cls;
+  if (tekst != null) e.textContent = tekst;
+  return e;
+}
+
+function byggSporsmal() {
+  const beholder = document.getElementById('sporsmal');
+  SPORSMAAL.forEach((s, i) => {
+    const seksjon = el('section', 'steg');
+    seksjon.dataset.steg = i;
+    seksjon.append(el('p','teller',`Spørsmål ${i+1} av ${SPORSMAAL.length}`), el('h1','',s.tekst));
+    s.valg.forEach(([verdi, etikett]) => {
+      const knapp = el('button','valg',etikett);
+      knapp.type = 'button';
+      knapp.onclick = () => velg(s.id, verdi);
+      seksjon.append(knapp);
+    });
+    beholder.append(seksjon);
+  });
+}
+
+function visSteg(n) {
+  document.querySelectorAll('.steg').forEach(s => s.classList.toggle('aktiv', Number(s.dataset.steg) === n));
+  window.scrollTo(0, 0);
+}
+
+function oppdaterFremdrift() {
+  document.getElementById('fremdrift').style.width = (steg / SPORSMAAL.length) * 100 + '%';
+}
+
+function velg(id, verdi) {
+  svar[id] = verdi;
+  steg++;
+  oppdaterFremdrift();
+  if (steg < SPORSMAAL.length) visSteg(steg);
+  else { visSteg(-1); visResultat(); }
+}
+
+function visResultat() {
+  const res = score(svar);
+  const resultat = document.getElementById('resultat');
+  resultat.hidden = false;
+  document.getElementById('laster').hidden = false;
+
+  // Kort pause for å simulere at noe skjer, slik at det ser ut som en ekte beregning
+  setTimeout(() => {
+    document.getElementById('laster').hidden = true;
+    document.getElementById('innhold').hidden = false;
+    document.getElementById('score').textContent = res.score;
+    document.getElementById('niva').textContent = NIVA_TEKST[res.niva];
+
+    const beholder = document.getElementById('tiltak');
+    beholder.replaceChildren();
+    res.anbefalt.forEach(t => {
+      const kort = el('div','tiltak');
+      kort.append(
+        el('h2','',t.tittel),
+        el('p','lås','Låst. Lås opp med e-post under.'),
+        el('p','uskarp',t.tekst),
+      );
+      beholder.append(kort);
+    });
+    resultat.scrollIntoView({ behavior:'smooth' });
+  }, 900);
+}
+
+document.getElementById('skjema').addEventListener('submit', (e) => {
+  e.preventDefault();
+  const epost = document.getElementById('epost').value.trim();
+  const knapp = document.getElementById('send');
+  knapp.disabled = true;
+  knapp.textContent = 'Sender …';
+
+  // Demo: ingen e-post sendes. Bare vis neste steg.
+  setTimeout(() => {
+    document.getElementById('skjema').hidden = true;
+    document.getElementById('epostvis').textContent = epost;
+    document.getElementById('bekreft').hidden = false;
+    document.querySelectorAll('.tiltak .uskarp').forEach(p => p.style.filter = 'none');
+    document.querySelectorAll('.tiltak .lås').forEach(p => p.textContent = 'Opplåst i demoen');
+  }, 700);
+});
+
+byggSporsmal();
+visSteg(0);
+</script>
+</body>
+</html>
