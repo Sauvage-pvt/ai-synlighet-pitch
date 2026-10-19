@@ -178,6 +178,20 @@ async function gratis(body) {
       tiltak: "Jeg lager et sitemap så alle sidene dine blir funnet og lest.",
     },
     {
+      navn: "Én tydelig H1",
+      vekt: 6,
+      ok: /<h1[^>]*>[\s\S]*?\S[\s\S]*?<\/h1>/i.test(h),
+      funnet: /<h1[^>]*>/i.test(h) ? "H1 finnes på siden" : "Ingen H1 på siden",
+      tiltak: "Jeg setter én H1 som sier hva du gjør og hvor, slik at både lesere og søkemotorer forstår hovedtemaet.",
+    },
+    {
+      navn: "FAQ merket for AI-søk",
+      vekt: 8,
+      ok: typer.includes("FAQPage"),
+      funnet: typer.includes("FAQPage") ? "FAQPage-skjema finnes" : "Ingen FAQPage-skjema",
+      tiltak: "Jeg merker de vanlige spørsmålene dine med FAQPage-skjema, så AI-søk kan sitere svarene dine.",
+    },
+    {
       navn: "Mobil og HTTPS",
       vekt: 5,
       ok: harViewport && https,
@@ -186,7 +200,9 @@ async function gratis(body) {
     },
   ];
 
-  const score = sjekker.reduce((s, c) => s + (c.ok ? c.vekt : 0), 0);
+  const totalVekt = sjekker.reduce((s, c) => s + c.vekt, 0);
+  const opptjent = sjekker.reduce((s, c) => s + (c.ok ? c.vekt : 0), 0);
+  const score = Math.round((opptjent / totalVekt) * 100);
   return {
     domene: new URL(side.url).hostname,
     navn: String(body.navn || "").trim() || siteName || title.split(/[|\-–·]/)[0].trim(),
