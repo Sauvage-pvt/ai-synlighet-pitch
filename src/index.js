@@ -9,6 +9,8 @@ const AI_BOTS = ["GPTBot", "OAI-SearchBot", "ChatGPT-User", "PerplexityBot", "Cl
 export default {
   async fetch(req, env) {
     const url = new URL(req.url);
+    // CORS: gratis-sjekken kan kalles fra andre sider (f.eks. testsiden for Dahl)
+    if (req.method === "OPTIONS") return new Response(null, { status: 204, headers: CORS });
     try {
       if (url.pathname === "/api/gratis" && req.method === "POST") {
         return json(await gratis(await req.json()));
@@ -28,10 +30,16 @@ export default {
   },
 };
 
+const CORS = {
+  "access-control-allow-origin": "*",
+  "access-control-allow-methods": "POST, OPTIONS",
+  "access-control-allow-headers": "content-type",
+};
+
 function json(data, status = 200) {
   return new Response(JSON.stringify(data), {
     status,
-    headers: { "content-type": "application/json; charset=utf-8", "cache-control": "no-store" },
+    headers: { "content-type": "application/json; charset=utf-8", "cache-control": "no-store", ...CORS },
   });
 }
 
