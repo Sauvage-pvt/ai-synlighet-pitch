@@ -15,6 +15,9 @@ export default {
       if (url.pathname === "/api/gratis" && req.method === "POST") {
         return json(await gratis(await req.json()));
       }
+      if (url.pathname === "/api/bransje" && req.method === "POST") {
+        return json(await bransjekart(await req.json(), env));
+      }
       if (url.pathname === "/api/analyse" && req.method === "POST") {
         const body = await req.json();
         if (!env.DEMO_KODE || body.kode !== env.DEMO_KODE) {
@@ -242,6 +245,40 @@ function blokkerteBotter(robots) {
     if (egen) return blokkerAlt(egen);
     return stjerne ? blokkerAlt(stjerne) : false;
   });
+}
+
+// ---------- BRANSJEKART (Google Places) ----------
+// Kun bransje og sted. Ingen adresse, ingen kundeidentitet, ingen anmeldelsestekst lagres eller vises.
+async function bransjekart(body, env) {
+  const bransje = String(body.bransje || "").trim();
+  const sted = String(body.sted || "").trim();
+  if (!bransje || !sted) throw new Error("Skriv inn bransje og sted.");
+  if (!env.GOOGLE_MAPS_KEY) throw new Error("GOOGLE_MAPS_KEY mangler i Cloudflare.");
+
+  const r = await fetch("https://places.googleapis.com/v1/places:searchText", {
+    method: "POST",
+    headers: {
+      "content-type": "application/json",
+      "x-goog-api-key": env.GOOGLE_MAPS_KEY,
+      "x-goog-fieldmask": "places.id,places.displayName,places.location,places.rating,places.userRatingCount",
+    },
+    body: JSON.stringify({ textQuery: bransje + " i " + sted, languageCode: "no", regionCode: "NO", maxResultCount: 20 }),
+    signal: AbortSignal.timeout(15000),
+  });
+  if (!r.ok) throw new Error("Google svarte " + r.status + ": " + (await r.text()).slice(0, 200));
+  const data = await r.json();
+
+  const bedrifter = (data.places || [])
+    .map((p) => ({
+      navn: p.displayName?.text || "",
+      lat: p.location?.latitude ?? null,
+      lng: p.location?.longitude ?? null,
+      snitt: p.rating ?? null,
+      antall: p.userRatingCount ?? 0,
+    }))
+    .sort((a, b) => b.antall - a.antall);
+
+  return { bransje, sted, antall: bedrifter.length, bedrifter, kilde: "Google Places" };
 }
 
 // ---------- ANALYSE (ChatGPT) ----------
