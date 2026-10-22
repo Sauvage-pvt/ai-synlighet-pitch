@@ -1,10 +1,15 @@
 // AI-Synlighet – Worker
-// /api/gratis  → teknisk sjekk av nettsiden (ingen API-kostnad)
+// /api/gratis  → teknisk sjekk av nettsiden, inkl. kontaktsider (ingen API-kostnad)
+// /api/bransje → Google Places-søk
 // /api/analyse → ekte spørsmål til ChatGPT (krever demokode)
 // Alt annet serveres fra /public.
 
 const UA = "Mozilla/5.0 (compatible; AI-Synlighet/1.0; +https://ai-synlighet-pitch.lenkemotor.workers.dev)";
 const AI_BOTS = ["GPTBot", "OAI-SearchBot", "ChatGPT-User", "PerplexityBot", "ClaudeBot", "Google-Extended"];
+
+// Undersider som typisk har telefon og adresse
+const KONTAKT_STI = /(^|[\/-])(kontakt|kontakt-oss|ta-kontakt|om|om-oss|finn-oss|besok-oss|adresse|contact|about)([\/-]|$)/i;
+const MAKS_UNDERSIDER = 6;
 
 export default {
   async fetch(req, env) {
@@ -69,7 +74,14 @@ async function hent(u, ms = 8000) {
   }
 }
 
-const stripTags = (h) => h.replace(/<script[\s\S]*?<\/script>/gi, " ").replace(/<style[\s\S]*?<\/style>/gi, " ").replace(/<[^>]+>/g, " ").replace(/&nbsp;/g, " ").replace(/\s+/g, " ");
+const stripTags = (h) =>
+  h
+    .replace(/<script[\s\S]*?<\/script>/gi, " ")
+    .replace(/<style[\s\S]*?<\/style>/gi, " ")
+    .replace(/<[^>]+>/g, " ")
+    .replace(/&nbsp;/g, " ")
+    .replace(/\s+/g, " ");
+
 const meta = (h, name) => {
   const re = new RegExp(`<meta[^>]+(?:name|property)=["']${name}["'][^>]*>`, "i");
   const m = h.match(re);
@@ -78,7 +90,44 @@ const meta = (h, name) => {
   return c ? c[1].trim() : "";
 };
 
-// ---------- GRATIS ----------
+// Finn interne lenker til kontakt/om-sider. Tar også med lenker der lenketeksten sier kontakt.
+function kontaktLenker(h, origin) {
+  const basis = new URL(origin).hostname.replace(/^www\./, "");
+  const funnet = new Set();
+  for (const m of h.matchAll(/<a[^>]+href=["']([^"'#]+)["'][^>]*>([\s\S]*?)<\/a>/gi)) {
+    const href = m[1];
+    if (/^(mailto|tel|javascript):/i.test(href)) continue;
+    let u;
+    try {
+      u = new URL(href, origin);
+    } catch {
+      continue;
+    }
+    if (u.hostname.replace(/^www\./, "") !== basis) continue;
+    const lenketekst = stripTags(m[2] || "");
+    if (KONTAKT_STI.test(u.pathname) || /\b(kontakt|om oss|ta kontakt)\b/i.test(lenketekst)) {
+      funnet.add(u.origin + u.pathname);
+    }
+  }
+  return [...funnet];
+}
+
+// Telefonnumre: først tel:-lenker (mest pålitelig), så synlig tekst. Norske numre er 8 siffer og starter på 2–9.
+function telefoner(h, tekst) {
+  const funnet = new Set();
+  for (const m of h.matchAll(/href=["']tel:([^"']+)["']/gi)) {
+    const siffer = m[1].replace(/\D/g, "").replace(/^(0047|47)/, "");
+    if (/^[2-9]\d{7}$/.test(siffer)) funnet.add(siffer);
+  }
+  for (const m of tekst.matchAll(/(?<!\d)(?:\+47|0047)?[\s.-]?([2-9]\d)[\s.-]?(\d{2})[\s.-]?(\d{2})[\s.-]?(\d{2})(?!\d)/g)) {
+    funnet.add(m[1] + m[2] + m[3] + m[4]);
+  }
+  return [...funnet];
+}
+
+// Postnummer + sted, f.eks. "7800 Namsos" eller "7800 NAMSOS"
+const POSTNR = /\b\d{4}\s+[A-ZÆØÅ][A-ZÆØÅa-zæøå-]{2,}/;
+
 async function gratis(body) {
   const u = normUrl(body.url);
   const sted = String(body.sted || "").trim();
@@ -92,14 +141,38 @@ async function gratis(body) {
   ]);
   if (!side.ok) throw new Error(`Fikk ikke hentet ${u.hostname} (${side.status || side.feil || "ukjent feil"}).`);
 
+  // Undersider: kontaktlenker fra forsiden + kontaktrelaterte URL-er fra sitemap
+  const sitemapUrl = sitemap.ok
+    ? [...sitemap.tekst.matchAll(/<loc>\s*([^<\s]+)\s*<\/loc>/gi)]
+        .map((m) => m[1])
+        .filter((x) => {
+          try {
+            return KONTAKT_STI.test(new URL(x).pathname);
+          } catch {
+            return false;
+          }
+        })
+    : [];
+  const kandidater = [...new Set([...kontaktLenker(side.tekst, origin), ...sitemapUrl])]
+    .filter((k) => k !== side.url && k !== origin + "/")
+    .slice(0, MAKS_UNDERSIDER);
+
+  const undersider = await Promise.all(kandidater.map((k) => hent(new URL(k), 8000)));
+  const sider = [
+    { url: side.url, h: side.tekst, kilde: "forsiden" },
+    ...undersider
+      .filter((s) => s.ok && (!s.type || /html/i.test(s.type)))
+      .map((s) => ({ url: s.url, h: s.tekst, kilde: new URL(s.url).pathname || "/" })),
+  ];
+
   const h = side.tekst;
-  const tekst = stripTags(h);
+  const alleTekst = sider.map((s) => stripTags(s.h)).join(" ");
   const title = (h.match(/<title[^>]*>([\s\S]*?)<\/title>/i) || [])[1]?.trim() || "";
   const desc = meta(h, "description");
   const siteName = meta(h, "og:site_name");
 
-  // JSON-LD
-  const blokker = [...h.matchAll(/<script[^>]+application\/ld\+json[^>]*>([\s\S]*?)<\/script>/gi)].map((m) => m[1]);
+  // JSON-LD fra alle sidene
+  const blokker = sider.flatMap((s) => [...s.h.matchAll(/<script[^>]+application\/ld\+json[^>]*>([\s\S]*?)<\/script>/gi)].map((m) => m[1]));
   const typer = [];
   let harAdresse = false;
   for (const b of blokker) {
@@ -117,19 +190,21 @@ async function gratis(body) {
   const GENERISK = /^(WebSite|WebPage|BreadcrumbList|ListItem|PostalAddress|ImageObject|SearchAction|EntryPoint|SiteNavigationElement|ContactPoint|GeoCoordinates|OpeningHoursSpecification|Person|Thing|CollectionPage|ItemList|Offer|PropertyValueSpecification)$/i;
   const lokalTyper = typer.filter((t) => !GENERISK.test(t));
 
-  // llms.txt – må være tekst, ikke en HTML-feilside
   const harLlms = llms.ok && !/text\/html/i.test(llms.type) && llms.tekst.trim().length > 20;
-
-  // robots.txt – blokkeres AI-roboter?
   const blokkert = robots.ok ? blokkerteBotter(robots.tekst) : [];
-
   const harSitemap = sitemap.ok && /<(urlset|sitemapindex)/i.test(sitemap.tekst);
   const harViewport = /<meta[^>]+name=["']viewport["']/i.test(h);
   const https = new URL(side.url).protocol === "https:";
-  const telefon = /(\+47[\s]?)?(\d{2}[\s]?\d{2}[\s]?\d{2}[\s]?\d{2}|\d{3}[\s]?\d{2}[\s]?\d{3})/.test(tekst);
-  const postnr = /\b\d{4}\s+[A-ZÆØÅ][a-zæøå]+/.test(tekst);
-  const nevnerSted = sted ? tekst.toLowerCase().includes(sted.toLowerCase()) : null;
-  const ordAntall = tekst.split(" ").length;
+
+  // Kontaktinfo: sjekk alle sidene vi fant
+  const tlfFunn = sider.flatMap((s) => telefoner(s.h, stripTags(s.h)).map((t) => ({ t, side: s.kilde })));
+  const telefon = tlfFunn.length > 0;
+  const postnrSide = sider.find((s) => POSTNR.test(stripTags(s.h)));
+  const postnr = Boolean(postnrSide);
+  const kontaktSider = sider.length > 1 ? ` · sjekket ${sider.length} sider` : " · fant ingen kontaktside å sjekke";
+
+  const nevnerSted = sted ? alleTekst.toLowerCase().includes(sted.toLowerCase()) : null;
+  const ordAntall = alleTekst.split(" ").length;
 
   const sjekker = [
     {
@@ -171,15 +246,17 @@ async function gratis(body) {
       navn: "Sted nevnt på siden",
       vekt: 10,
       ok: nevnerSted !== false,
-      funnet: nevnerSted === null ? "Ikke sjekket (sted ikke oppgitt)" : nevnerSted ? `«${sted}» står på forsiden` : `«${sted}» står ikke på forsiden`,
+      funnet: nevnerSted === null ? "Ikke sjekket (sted ikke oppgitt)" : nevnerSted ? `«${sted}» står på nettsiden` : `«${sted}» står ikke på nettsiden`,
       tiltak: "Jeg sørger for at kommune og region står tydelig i tekst og data, så du kobles til lokale søk.",
     },
     {
       navn: "Kontaktinfo synlig",
       vekt: 10,
       ok: telefon && postnr,
-      funnet: `Telefon: ${telefon ? "ja" : "nei"} · Postadresse: ${postnr ? "ja" : "nei"}`,
-      tiltak: "Jeg legger telefon og adresse synlig på forsiden og i bunnteksten.",
+      funnet:
+        `Telefon: ${telefon ? `ja (${tlfFunn[0].t}, fra ${tlfFunn[0].side})` : "nei"} · ` +
+        `Postadresse: ${postnr ? `ja (${postnrSide.kilde})` : "nei"}${kontaktSider}`,
+      tiltak: "Jeg legger telefon og adresse synlig på forsiden og i bunnteksten, og merker dem maskinlesbart.",
     },
     {
       navn: "Sitemap",
@@ -219,12 +296,16 @@ async function gratis(body) {
     navn: String(body.navn || "").trim() || siteName || title.split(/[|\-–·]/)[0].trim(),
     score,
     tynt: ordAntall < 150,
+    sjekkede: sider.map((s) => s.url),
     sjekker,
   };
 }
 
 function blokkerteBotter(robots) {
-  const linjer = robots.split(/\r?\n/).map((l) => l.replace(/#.*/, "").trim()).filter(Boolean);
+  const linjer = robots
+    .split(/\r?\n/)
+    .map((l) => l.replace(/#.*/, "").trim())
+    .filter(Boolean);
   const grupper = [];
   let cur = null;
   for (const l of linjer) {
@@ -238,7 +319,8 @@ function blokkerteBotter(robots) {
       cur.regler.push({ key, val });
     }
   }
-  const blokkerAlt = (g) => g.regler.some((r) => r.key === "disallow" && r.val === "/") && !g.regler.some((r) => r.key === "allow" && r.val === "/");
+  const blokkerAlt = (g) =>
+    g.regler.some((r) => r.key === "disallow" && r.val === "/") && !g.regler.some((r) => r.key === "allow" && r.val === "/");
   const stjerne = grupper.find((g) => g.agenter.includes("*"));
   return AI_BOTS.filter((bot) => {
     const egen = grupper.find((g) => g.agenter.includes(bot.toLowerCase()));
@@ -316,13 +398,20 @@ async function analyse(body, env) {
     const k = b.navn.trim();
     teller[k] = (teller[k] || 0) + 1;
   });
-  const konkurrenter = Object.entries(teller).sort((a, b) => b[1] - a[1]).slice(0, 6).map(([navn, ganger]) => ({ navn, ganger }));
+  const konkurrenter = Object.entries(teller)
+    .sort((a, b) => b[1] - a[1])
+    .slice(0, 6)
+    .map(([navn2, ganger]) => ({ navn: navn2, ganger }));
 
   const nevntAntall = resultater.filter((r) => r.nevnt).length;
   return { modell: model, nevntAntall, totalt: sporsmal.length, resultater, konkurrenter };
 }
 
-const forenkle = (s) => String(s).toLowerCase().replace(/\b(as|asa|da|ans|enk)\b/g, "").replace(/[^a-z0-9æøå]/g, "");
+const forenkle = (s) =>
+  String(s)
+    .toLowerCase()
+    .replace(/\b(as|asa|da|ans|enk)\b/g, "")
+    .replace(/[^a-z0-9æøå]/g, "");
 
 async function spor(q, model, key) {
   const r = await fetch("https://api.openai.com/v1/chat/completions", {
@@ -347,7 +436,9 @@ async function spor(q, model, key) {
   const data = await r.json();
   try {
     const parsed = JSON.parse(data.choices[0].message.content);
-    return (parsed.bedrifter || []).filter((b) => b && b.navn).map((b) => ({ navn: String(b.navn), nettside: b.nettside ? String(b.nettside).toLowerCase() : null }));
+    return (parsed.bedrifter || [])
+      .filter((b) => b && b.navn)
+      .map((b) => ({ navn: String(b.navn), nettside: b.nettside ? String(b.nettside).toLowerCase() : null }));
   } catch {
     return [];
   }
