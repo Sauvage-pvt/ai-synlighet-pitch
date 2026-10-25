@@ -78,6 +78,9 @@ footer h2{margin-bottom:10px}
 .btns{display:flex;flex-wrap:wrap;gap:10px;margin-top:16px}
 button{font:inherit;font-weight:600;font-size:16px;padding:12px 18px;border-radius:10px;border:1px solid var(--accent);background:var(--accent);color:#fff;cursor:pointer}
 button.ghost{background:transparent;color:var(--accent)}
+a.btn{display:inline-block;font-weight:600;font-size:16px;padding:12px 18px;border-radius:10px;border:1px solid var(--accent);background:var(--accent);color:#fff;text-decoration:none}
+.src{font-size:13px;color:var(--muted);margin-top:8px}
+.src a{color:inherit}
 button:disabled{opacity:.55;cursor:wait}
 .status{margin-top:14px;color:var(--muted);min-height:1.6em}
 .status.err{color:var(--warn)}
@@ -108,7 +111,7 @@ button:disabled{opacity:.55;cursor:wait}
   <div class="wrap">
     <p class="eyebrow">Per Dahl · Presentasjon for Steinkjer Utvikling</p>
     <h1>AI-Synlighet: Når norske bedrifter forsvinner fra ChatGPT</h1>
-    <p class="lead">Kundene spør AI før de spør Google. Vi måler om din bedrift blir nevnt, hvem som blir nevnt i stedet, og hva du må fikse.</p>
+    <p class="lead">Stadig flere spør AI før de spør Google. Vi måler om din bedrift blir nevnt, hvem som blir nevnt i stedet, og hva du må fikse.</p>
   </div>
 </header>
 
@@ -116,8 +119,9 @@ button:disabled{opacity:.55;cursor:wait}
 <section>
   <div class="wrap">
     <h2>Problemet</h2>
-    <p><strong>Google-søk faller. AI-søk vokser.</strong></p>
-    <div class="stat"><b>58&nbsp;%</b><span>av folk under 30 spør AI først, før de søker på Google.</span></div>
+    <p><strong>AI-bruken i Norge vokser raskt.</strong></p>
+    <div class="stat"><b>69&nbsp;%</b><span>av nordmenn mellom 16 og 79 år brukte generativ KI de siste tre månedene i 2026, opp fra 54&nbsp;% året før. Blant 16–24-åringer er det 9 av 10.</span></div>
+    <p class="src">Kilde: <a href="https://www.ssb.no/teknologi-og-innovasjon/informasjons-og-kommunikasjonsteknologi-ikt/statistikk/bruk-av-ikt-i-husholdningene/artikler/kunstig-intelligens-i-nesten-alle-hjem" target="_blank" rel="noopener">SSB, «Kunstig intelligens i nesten alle hjem», 25.9.2026</a></p>
     <p>Når noen spør ChatGPT «Hvem tilbyr dette i Steinkjer?», dukker bedriften din bare opp hvis AI-en:</p>
     <ul class="clean">
       <li>vet at du tilbyr akkurat det kunden spør etter</li>
@@ -145,20 +149,20 @@ button:disabled{opacity:.55;cursor:wait}
     <h2>Tre nivåer</h2>
     <div class="grid three">
       <div class="card tier">
-        <span class="name">Gratis</span>
+        <span class="name">Teknisk sjekk</span>
         <div class="price">0 kr</div>
         <p class="quote">«Her burde du stå»</p>
-        <dl><dt>Hva</dt><dd>Simulering og teknisk sjekk med score 0–100</dd><dt>For</dt><dd>Alle SMB-er</dd></dl>
+        <dl><dt>Hva</dt><dd>Gratis sjekk av om nettsiden er rigget for AI, med score 0–100</dd><dt>For</dt><dd>Alle SMB-er</dd></dl>
       </div>
       <div class="card tier featured">
         <span class="name">Analyse</span>
-        <div class="price">799 kr <small>/ gang</small></div>
+        <div class="price">1 290 kr <small>/ gang</small></div>
         <p class="quote">«Her står du faktisk nå»</p>
         <dl><dt>Hva</dt><dd>Ekte spørsmål til ChatGPT: om bedriften nevnes, hvilken plass den får, og hvem som blir nevnt i stedet</dd><dt>For</dt><dd>Bedrifter som vil gjøre noe med det</dd></dl>
       </div>
       <div class="card tier">
         <span class="name">Tracking <span class="pill">Under bygging</span></span>
-        <div class="price">299 kr <small>/ mnd</small></div>
+        <div class="price">499 kr <small>/ mnd</small></div>
         <p class="quote">«Her er dashbordet ditt»</p>
         <dl><dt>Hva</dt><dd>Ukentlig måling, historikk, varsler når konkurrenter flytter seg</dd><dt>For</dt><dd>Bedrifter i tøff konkurranse</dd></dl>
       </div>
@@ -195,7 +199,7 @@ button:disabled{opacity:.55;cursor:wait}
 <section id="prov">
   <div class="wrap">
     <h2>Prøv selv</h2>
-    <p class="muted">Skriv inn en bedrift og se forskjellen på gratis sjekk og full analyse. Gratis sjekk leser nettsiden på ekte. Full analyse spør ChatGPT på ekte og krever demokode.</p>
+    <p class="muted">Skriv inn en bedrift og se forskjellen på teknisk sjekk og full analyse. Teknisk sjekk er gratis og leser nettsiden på ekte. Full analyse spør ChatGPT på ekte og krever demokode.</p>
     <form class="form" id="f" onsubmit="return false">
       <div class="full"><label for="url">Nettside</label><input id="url" placeholder="f.eks. bedrift.no" autocomplete="off" inputmode="url" required></div>
       <div><label for="bransje">Bransje / tjeneste</label><input id="bransje" placeholder="f.eks. rørlegger"></div>
@@ -204,19 +208,19 @@ button:disabled{opacity:.55;cursor:wait}
       <div><label for="kode">Demokode (full analyse)</label><input id="kode" type="password" autocomplete="off"></div>
     </form>
     <div class="btns">
-      <button id="bGratis">Kjør gratis sjekk</button>
+      <button id="bGratis">Kjør teknisk sjekk (gratis)</button>
       <button id="bFull" class="ghost">Kjør full analyse</button>
     </div>
     <div class="status" id="status" role="status"></div>
     <div class="res" id="res" hidden>
       <div class="card" id="rGratis"></div>
-      <div class="card" id="rFull"><h3>Full analyse</h3><p class="locked">Kjør full analyse for å se om ChatGPT faktisk nevner bedriften, hvilken plass den får og hvem som blir nevnt i stedet.</p></div>
+      <div class="card" id="rFull"><h3>Full analyse</h3><p class="locked">Kjør full analyse for å se om ChatGPT faktisk nevner bedriften, hvilken plass den får og hvem som blir nevnt i stedet.</p><p class="src">Full analyse spør AI-modellen direkte og viser hva den vet om bedriften. ChatGPT-appen kan i tillegg søke på nettet, så svarene der kan avvike noe.</p></div>
     </div>
     <div class="card compare" id="cmp" hidden>
       <h3>Forskjellen</h3>
       <ul class="clean">
-        <li><strong>Gratis sjekk</strong> ser på nettsiden: om den er laget slik at AI kan forstå og anbefale bedriften.</li>
-        <li><strong>Full analyse</strong> spør ChatGPT de samme spørsmålene kundene stiller, og viser om bedriften faktisk blir nevnt og hvem som vinner i stedet.</li>
+        <li><strong>Teknisk sjekk</strong> ser på nettsiden: om den er laget slik at AI kan forstå og anbefale bedriften.</li>
+        <li><strong>Full analyse</strong> spør ChatGPT de samme spørsmålene kundene stiller, og viser om bedriften faktisk blir nevnt og hvem som vinner i stedet. Den viser hva AI-modellen vet om bedriften. ChatGPT-appen kan i tillegg søke på nettet.</li>
         <li><strong>Tracking</strong> kjører analysen hver uke og viser om tiltakene virker.</li>
       </ul>
     </div>
@@ -226,10 +230,11 @@ button:disabled{opacity:.55;cursor:wait}
   <div class="wrap">
     <h2>Markedet</h2>
     <div class="kpi">
-      <div class="card"><b>~250 000</b><span>norske SMB-er</span></div>
-      <div class="card"><b>~15 000</b><span>i Trøndelag</span></div>
-      <div class="card"><b>500–2 000</b><span>realistiske kunder år 1</span></div>
+      <div class="card"><b>207 000</b><span>norske bedrifter med ansatte (658 000 totalt)</span></div>
+      <div class="card"><b>17 300</b><span>bedrifter med ansatte i Trøndelag (55 100 totalt)</span></div>
+      <div class="card"><b>500–2 000</b><span>realistiske kunder år 1 (eget anslag)</span></div>
     </div>
+    <p class="src">Kilder: <a href="https://www.ssb.no/virksomheter-foretak-og-regnskap/virksomheter-og-foretak/statistikk/virksomheter/artikler/full-brems-i-antall-bedrifter" target="_blank" rel="noopener">SSB, «Full brems i antall bedrifter», tall per 1.1.2025</a> · <a href="https://peg.trondelagfylke.no/globalassets/bilder/naring-og-innovasjon/dokumenter/konjunkturbilde-for-trondelag-2025.pdf" target="_blank" rel="noopener">Trøndelag fylkeskommune, «Konjunkturbilde for Trøndelag 2025», tall per 1.1.2026</a></p>
     <p style="margin-top:22px"><strong>Konkurrenter:</strong> Nimt.ai (svensk, Helsingborg) og Google AI Overview (innebygd, lite data). Vi har ikke funnet lokale aktører i Trøndelag som tilbyr dette, men søket er ikke uttømmende.</p>
     <p class="callout">Gapet i markedet: en rimelig, norsk løsning laget for små bedrifter. Den som kommer først, får fortrinnet.</p>
   </div>
@@ -242,7 +247,7 @@ button:disabled{opacity:.55;cursor:wait}
       <div class="card">
         <h3>Inntekter</h3>
         <ul class="clean">
-          <li>Gratisnivå som lead-magnet</li>
+          <li>Gratis teknisk sjekk som lead-magnet</li>
           <li>Analyseoppdrag (B2B, engangskjøp)</li>
           <li>Abonnement (løpende inntekt)</li>
         </ul>
@@ -252,12 +257,18 @@ button:disabled{opacity:.55;cursor:wait}
         <p>I hovedsak API-kall til ChatGPT eller Perplexity: under 1 kr per analyse. Det gir svært høy margin på både analyse og abonnement.</p>
       </div>
     </div>
-    <h3 style="margin-top:28px">Scenario år 1</h3>
-    <div class="kpi">
-      <div class="card"><b>399 500 kr</b><span>500 analyser à 799 kr</span></div>
-      <div class="card"><b>358 800 kr</b><span>100 abonnenter i 12 mnd</span></div>
-      <div class="card"><b>~758 000 kr</b><span>samlet omsetning</span></div>
+    <h3 style="margin-top:28px">Scenarioer år 1</h3>
+    <div class="table-wrap">
+      <table>
+        <thead><tr><th>Scenario</th><th>Analyser à 1 290 kr</th><th>Abonnenter à 499 kr/mnd</th><th>Omsetning</th></tr></thead>
+        <tbody>
+          <tr><td>Forsiktig</td><td>30 (38 700 kr)</td><td>10 (29 940 kr)</td><td><strong>~70 000 kr</strong></td></tr>
+          <tr><td>Middels</td><td>100 (129 000 kr)</td><td>30 (89 820 kr)</td><td><strong>~220 000 kr</strong></td></tr>
+          <tr><td>Ambisiøst</td><td>500 (645 000 kr)</td><td>100 (598 800 kr)</td><td><strong>~1,24 mill. kr</strong></td></tr>
+        </tbody>
+      </table>
     </div>
+    <p class="src">Abonnentene er regnet med et snitt på 6 måneder, fordi de kommer gradvis gjennom året. I det ambisiøse scenarioet har de alle 12 måneder. Middels forutsetter 2–3 lokale samarbeidspartnere, for eksempel næringsforeninger, som sender bedrifter videre.</p>
   </div>
 </section>
 
@@ -278,7 +289,7 @@ button:disabled{opacity:.55;cursor:wait}
   <div class="wrap">
     <h2>Plan: 6 uker til MVP</h2>
     <ol class="timeline">
-      <li><span class="when">Uke 1–2</span><h3>Gratis simulering</h3><p>Cloudflare Worker, test på 10 lokale bedrifter</p></li>
+      <li><span class="when">Uke 1–2</span><h3>Teknisk sjekk</h3><p>Cloudflare Worker, test på 10 lokale bedrifter</p></li>
       <li><span class="when">Uke 3</span><h3>Analyse</h3><p>ChatGPT-integrasjon og priskalkulator</p></li>
       <li><span class="when">Uke 4–5</span><h3>Tracking</h3><p>Dashbord, historikk og varsler</p></li>
       <li><span class="when">Uke 6</span><h3>Lansering</h3><p>Landingsside og oppsøkende salg, med start i Steinkjer</p></li>
@@ -286,7 +297,7 @@ button:disabled{opacity:.55;cursor:wait}
     <h3 style="margin-top:12px">Go-to-market</h3>
     <ul class="clean">
       <li>Start med lokale bedrifter i Steinkjer og Trøndelag</li>
-      <li>Gratisnivå for alle, så terskelen for å prøve blir lav</li>
+      <li>Gratis teknisk sjekk for alle, så terskelen for å prøve blir lav</li>
       <li>3–5 lokale kundecaser</li>
       <li>Mersalg til analyse og abonnement</li>
       <li>Senere hele Norge via LinkedIn, Gründerraketten og innholdsmarkedsføring</li>
@@ -303,7 +314,7 @@ button:disabled{opacity:.55;cursor:wait}
         <tbody>
           <tr><td>API-kostnader vokser raskere enn inntektene</td><td><span class="pill">Lav</span></td><td>Batch-kjøring og caching</td></tr>
           <tr><td>Nimt.ai lanserer i Norge</td><td><span class="pill med">Middels</span></td><td>Først ute, lokalt fokus, lavere pris</td></tr>
-          <tr><td>SMB-er bryr seg ikke om AI-synlighet</td><td><span class="pill med">Middels</span></td><td>Gratisnivået viser verdien først</td></tr>
+          <tr><td>SMB-er bryr seg ikke om AI-synlighet</td><td><span class="pill med">Middels</span></td><td>Den tekniske sjekken viser verdien først</td></tr>
           <tr><td>OpenAI endrer API-prisene</td><td><span class="pill">Lav–middels</span></td><td>Legge til Perplexity og andre leverandører</td></tr>
         </tbody>
       </table>
@@ -316,6 +327,7 @@ button:disabled{opacity:.55;cursor:wait}
   <div class="wrap">
     <h2>AI-søk er ikke fremtiden. Det er nå.</h2>
     <p class="muted">AI-Synlighet løser et reelt problem, har en tydelig forretningsmodell, kan bygges på seks uker og koster lite å skalere.</p>
+    <p style="margin:20px 0 14px"><a class="btn" href="mailto:pervdahl@gmail.com?subject=AI-Synlighet">Ta kontakt</a></p>
     <p class="muted">Per Dahl · Steinkjer · pervdahl@gmail.com</p>
   </div>
 </footer>
@@ -341,7 +353,7 @@ button:disabled{opacity:.55;cursor:wait}
     sisteNavn=g.navn;
     const mangler=g.sjekker.filter(c=>!c.ok).length;
     $('rGratis').innerHTML=
-      `<h3>Gratis sjekk <span class="pill">${esc(g.domene)}</span></h3>
+      `<h3>Teknisk sjekk <span class="pill">${esc(g.domene)}</span></h3>
        <div class="score">${g.score}<small> / 100</small></div>
        <p class="muted" style="margin:6px 0 10px">${mangler?`${mangler} ting stopper AI fra å forstå eller anbefale ${esc(g.navn||'bedriften')}.`:'Nettsiden er godt rigget for AI-søk.'}${g.tynt?' Forsiden har også svært lite tekst.':''}</p>`+
       g.sjekker.map(c=>`<div class="chk"><div class="top"><span class="dot ${c.ok?'ok':'no'}">${c.ok?'✓':'!'}</span>${esc(c.navn)}</div>
@@ -369,7 +381,7 @@ button:disabled{opacity:.55;cursor:wait}
   $('bFull').onclick=async()=>{
     const d=data();
     if(!d.bransje||!d.sted){status('Fyll inn bransje og sted for full analyse.',true);return;}
-    busy(true);status('Kjører gratis sjekk og spør ChatGPT … (ca. 10–20 sek)');
+    busy(true);status('Kjører teknisk sjekk og spør ChatGPT … (ca. 10–20 sek)');
     try{
       const [g,a]=await Promise.all([post('/api/gratis',d),post('/api/analyse',{...d,navn:d.navn})]);
       visGratis(g);visFull(a);status('');
