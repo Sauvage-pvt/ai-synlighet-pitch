@@ -112,19 +112,6 @@ function kontaktLenker(h, origin) {
   return [...funnet];
 }
 
-// Telefonnumre: først tel:-lenker (mest pålitelig), så synlig tekst. Norske numre er 8 siffer og starter på 2–9.
-function telefoner(h, tekst) {
-  const funnet = new Set();
-  for (const m of h.matchAll(/href=["']tel:([^"']+)["']/gi)) {
-    const siffer = m[1].replace(/\D/g, "").replace(/^(0047|47)/, "");
-    if (/^[2-9]\d{7}$/.test(siffer)) funnet.add(siffer);
-  }
-  for (const m of tekst.matchAll(/(?<!\d)(?:\+47|0047)?[\s.-]?([2-9]\d)[\s.-]?(\d{2})[\s.-]?(\d{2})[\s.-]?(\d{2})(?!\d)/g)) {
-    funnet.add(m[1] + m[2] + m[3] + m[4]);
-  }
-  return [...funnet];
-}
-
 // Postnummer + sted, f.eks. "7800 Namsos" eller "7800 NAMSOS"
 const POSTNR = /\b\d{4}\s+[A-ZÆØÅ][A-ZÆØÅa-zæøå-]{2,}/;
 
@@ -197,8 +184,6 @@ async function gratis(body) {
   const https = new URL(side.url).protocol === "https:";
 
   // Kontaktinfo: sjekk alle sidene vi fant
-  const tlfFunn = sider.flatMap((s) => telefoner(s.h, stripTags(s.h)).map((t) => ({ t, side: s.kilde })));
-  const telefon = tlfFunn.length > 0;
   const postnrSide = sider.find((s) => POSTNR.test(stripTags(s.h)));
   const postnr = Boolean(postnrSide);
   const kontaktSider = sider.length > 1 ? ` · sjekket ${sider.length} sider` : " · fant ingen kontaktside å sjekke";
@@ -212,7 +197,7 @@ async function gratis(body) {
       vekt: 20,
       ok: lokalTyper.length > 0,
       funnet: typer.length ? `Fant: ${[...new Set(typer)].slice(0, 6).join(", ")}` : "Ingen strukturerte data funnet",
-      tiltak: "Jeg legger inn LocalBusiness-data med navn, adresse, telefon, åpningstider og tjenester, slik at AI forstår hvem du er og hvor du er.",
+      tiltak: "Jeg legger inn LocalBusiness-data med navn, adresse, åpningstider og tjenester, slik at AI forstår hvem du er og hvor du er.",
     },
     {
       navn: "Adresse i strukturerte data",
@@ -250,13 +235,11 @@ async function gratis(body) {
       tiltak: "Jeg sørger for at kommune og region står tydelig i tekst og data, så du kobles til lokale søk.",
     },
     {
-      navn: "Kontaktinfo synlig",
+      navn: "Adresse synlig",
       vekt: 10,
-      ok: telefon && postnr,
-      funnet:
-        `Telefon: ${telefon ? `ja (${tlfFunn[0].t}, fra ${tlfFunn[0].side})` : "nei"} · ` +
-        `Postadresse: ${postnr ? `ja (${postnrSide.kilde})` : "nei"}${kontaktSider}`,
-      tiltak: "Jeg legger telefon og adresse synlig på forsiden og i bunnteksten, og merker dem maskinlesbart.",
+      ok: postnr,
+      funnet: `Postadresse: ${postnr ? `ja (${postnrSide.kilde})` : "nei"}${kontaktSider}`,
+      tiltak: "Jeg legger adressen synlig på forsiden og i bunnteksten, og merker den maskinlesbart.",
     },
     {
       navn: "Sitemap",
